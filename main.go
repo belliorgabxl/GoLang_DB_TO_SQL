@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
+	// "github.com/robfig/cron/v3"
 )
 
 type Transaction struct {
@@ -42,6 +44,7 @@ func exportToExcel(db *sql.DB, c *gin.Context) {
 		return
 	}
 	defer uniqueMerchantID.Close()
+	t := time.Now()
 
 	var merchantIDs []string // Use the appropriate type for merchant_id
 
@@ -255,6 +258,7 @@ func exportToExcel(db *sql.DB, c *gin.Context) {
 		return
 	}
 
+
 	rows, err := db.Query("SELECT * FROM transactions")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -275,6 +279,17 @@ func exportToExcel(db *sql.DB, c *gin.Context) {
 		
 		transactions = append(transactions, txn)
 	}
+	f.SetColWidth(sheetName, "A", "A", 30.00)
+	f.SetColWidth(sheetName, "B", "C", 20.00)
+	f.SetColWidth(sheetName, "E", "E", 30.00)
+	f.SetColWidth(sheetName, "F", "F", 20.00)
+	f.SetColWidth(sheetName, "G", "G", 25.00)
+	f.SetColWidth(sheetName, "H", "I", 30.00)
+	f.SetColWidth(sheetName, "J", "N", 15.00)
+	f.SetColWidth(sheetName, "O", "P", 20.00)
+	f.SetColWidth(sheetName, "Q", "Q", 15.00)
+	f.SetColWidth(sheetName, "R", "R", 30.00)
+
 	log_count := 1
 	numCheckHeader := 1
 	for _, unique_merchantID_id := range merchantIDs {
@@ -301,7 +316,10 @@ func exportToExcel(db *sql.DB, c *gin.Context) {
 		f.SetCellStyle(sheetName, "A1", "O1", blankStyle)
 		f.SetCellStyle(sheetName, "P1", "P1", yellowFillStyle)
 		f.SetCellStyle(sheetName, "R1", "S1", blankStyle)
+		
+		
 
+	
 		discard := 0
 		subTotal := 0
 		rowNumber := numCheckHeader + 1
@@ -358,14 +376,13 @@ func exportToExcel(db *sql.DB, c *gin.Context) {
 		numCheckHeader = rowNumber + 3
 
 	}
-
-	err = f.SaveAs("DataConvertFromSQL.xlsx")
+	err = f.SaveAs("Data_"+t.Format("01-02-2006")+".xlsx")
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.File("DataConvertFromSQL.xlsx")
+	c.File("Data_"+t.Format("01-02-2006")+".xlsx")
 }
 
 func data(db *sql.DB, c *gin.Context) {
@@ -414,28 +431,7 @@ func data(db *sql.DB, c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, results)
 }
-func getMerchantId(db *sql.DB, c *gin.Context) {
-	unique_merchantID, err := db.Query("SELECT DISTINCT  merchant_id FROM transactions")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer unique_merchantID.Close()
 
-	var results []map[string]interface{}
-	for unique_merchantID.Next() {
-		var merchant_id string
-
-		unique_merchantID.Scan(&merchant_id)
-
-		row := map[string]interface{}{
-
-			"merchant_id": merchant_id,
-		}
-		results = append(results, row)
-	}
-	c.JSON(http.StatusOK, results)
-}
 
 func main() {
 	connStr := "user=user password=password dbname=go_database host=localhost sslmode=disable"
@@ -452,9 +448,6 @@ func main() {
 	})
 	router.GET("/data", func(c *gin.Context) {
 		data(db, c)
-	})
-	router.GET("/getID", func(c *gin.Context) {
-		getMerchantId(db, c)
 	})
 
 	router.Run(":8080")
